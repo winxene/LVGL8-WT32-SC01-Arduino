@@ -1,111 +1,28 @@
-/*
-    Simple Demo with WT32-SC01 + LovyanGFX + LVGL8.x
-*/
-#define LGFX_AUTODETECT // Autodetect board
-#define LGFX_USE_V1     // set to use new version of library
-//#define LV_CONF_INCLUDE_SIMPLE
+#include "MyDisplay.h"
 
-/* Uncomment below line to draw on screen with touch */
-//#define DRAW_ON_SCREEN
+lv_obj_t * mainScreen;
+// lv_obj_t * titleImage;
+lv_obj_t * qrCode;
+lv_obj_t *anyaGif;
 
-#include <LovyanGFX.hpp> // main library
-static LGFX lcd; // declare display variable
+LV_IMG_DECLARE(anya_compressed_raw);
 
-#include <lvgl.h>
-#include "lv_conf.h"
-/*** Setup screen resolution for LVGL ***/
-static const uint16_t screenWidth = 480;
-static const uint16_t screenHeight = 320;
-static lv_disp_draw_buf_t draw_buf;
-static lv_color_t buf[screenWidth * 10];
-
-// Variables for touch x,y
-#ifdef DRAW_ON_SCREEN
-static int32_t x, y;
-#endif
-
-/*** Function declaration ***/
-void display_flush(lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p);
-void touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data);
-void lv_button_demo(void);
-
-void setup(void)
+void displayFlush( lv_disp_drv_t *disp, const lv_area_t *area, lv_color_t *color_p )
 {
+  uint32_t w = ( area->x2 - area->x1 + 1 );
+  uint32_t h = ( area->y2 - area->y1 + 1 );
 
-  Serial.begin(115200); /* prepare for possible serial debug */
-
-  lcd.init(); // Initialize LovyanGFX
-  lv_init();  // Initialize lvgl
-
-  // Setting display to landscape
-  if (lcd.width() < lcd.height())
-    lcd.setRotation(lcd.getRotation() ^ 1);
-
-  /* LVGL : Setting up buffer to use for display */
-  lv_disp_draw_buf_init(&draw_buf, buf, NULL, screenWidth * 10);
-
-  /*** LVGL : Setup & Initialize the display device driver ***/
-  static lv_disp_drv_t disp_drv;
-  lv_disp_drv_init(&disp_drv);
-  disp_drv.hor_res = screenWidth;
-  disp_drv.ver_res = screenHeight;
-  disp_drv.flush_cb = display_flush;
-  disp_drv.draw_buf = &draw_buf;
-  lv_disp_drv_register(&disp_drv);
-
-  /*** LVGL : Setup & Initialize the input device driver ***/
-  static lv_indev_drv_t indev_drv;
-  lv_indev_drv_init(&indev_drv);
-  indev_drv.type = LV_INDEV_TYPE_POINTER;
-  indev_drv.read_cb = touchpad_read;
-  lv_indev_drv_register(&indev_drv);
-
-  /*** Create simple label and show LVGL version ***/
-  String LVGL_Arduino = "WT32-SC01 with LVGL ";
-  LVGL_Arduino += String('v') + lv_version_major() + "." + lv_version_minor() + "." + lv_version_patch();
-  lv_obj_t *label = lv_label_create(lv_scr_act()); // full screen as the parent
-  lv_label_set_text(label, LVGL_Arduino.c_str());  // set label text
-  lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 20);      // Center but 20 from the top
-
-  lv_button_demo();
+  myDisplay.startWrite();
+  myDisplay.setAddrWindow( area->x1, area->y1, w, h );
+  myDisplay.writePixels((lgfx::rgb565_t *)&color_p->full, w * h);
+  myDisplay.endWrite();
+  lv_disp_flush_ready(disp);
 }
 
-void loop()
+void readTouchPad( lv_indev_drv_t * indev_driver, lv_indev_data_t * data )
 {
-  lv_timer_handler(); /* let the GUI do its work */
-  delay(5);
-
-#ifdef DRAW_ON_SCREEN
-  /*** Draw on screen with touch ***/
-  if (lcd.getTouch(&x, &y))
-  {
-    lcd.fillRect(x - 2, y - 2, 5, 5, TFT_RED);
-    lcd.setCursor(380, 0);
-    lcd.printf("Touch:(%03d,%03d)", x, y);
-    // }
-#endif
-  }
-
-  /*** Display callback to flush the buffer to screen ***/
-  void display_flush(lv_disp_drv_t * disp, const lv_area_t *area, lv_color_t *color_p)
-  {
-    uint32_t w = (area->x2 - area->x1 + 1);
-    uint32_t h = (area->y2 - area->y1 + 1);
-
-    lcd.startWrite();
-    lcd.setAddrWindow(area->x1, area->y1, w, h);
-    lcd.pushColors((uint16_t *)&color_p->full, w * h, true);
-    lcd.endWrite();
-
-    lv_disp_flush_ready(disp);
-  }
-
-  /*** Touchpad callback to read the touchpad ***/
-  void touchpad_read(lv_indev_drv_t * indev_driver, lv_indev_data_t * data)
-  {
     uint16_t touchX, touchY;
-    bool touched = lcd.getTouch(&touchX, &touchY);
-
+    bool touched = myDisplay.getTouch(&touchX, &touchY);
     if (!touched)
     {
       data->state = LV_INDEV_STATE_REL;
@@ -113,68 +30,130 @@ void loop()
     else
     {
       data->state = LV_INDEV_STATE_PR;
-
       /*Set the coordinates*/
       data->point.x = touchX;
       data->point.y = touchY;
-
       // Serial.printf("Touch (x,y): (%03d,%03d)\n",touchX,touchY );
     }
+}
+
+const char * text;
+
+static void ta_event_cb(lv_event_t * e) {
+  lv_event_code_t code = lv_event_get_code(e);
+  lv_obj_t * ta = lv_event_get_target(e);
+  lv_obj_t * kb = (lv_obj_t*)lv_event_get_user_data(e);
+
+
+
+
+  if (code == LV_EVENT_READY) {
+    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+    text = lv_textarea_get_text(ta);
+    if (strlen(text) == 0) return;
+    lv_qrcode_update(qrCode, text, strlen(text));    
+    Serial.println(text);
+    lv_obj_clear_flag(qrCode, LV_OBJ_FLAG_HIDDEN);
   }
 
-  /* Counter button event handler */
-  static void counter_event_handler(lv_event_t * e)
-  {
-    lv_event_code_t code = lv_event_get_code(e);
-    lv_obj_t *btn = lv_event_get_target(e);
-    if (code == LV_EVENT_CLICKED)
-    {
-      static uint8_t cnt = 0;
-      cnt++;
-
-      /*Get the first child of the button which is the label and change its text*/
-      lv_obj_t *label = lv_obj_get_child(btn, 0);
-      lv_label_set_text_fmt(label, "Button: %d", cnt);
-      LV_LOG_USER("Clicked");
-      Serial.println("Clicked");
-    }
+  if (code == LV_EVENT_CLICKED || code == LV_EVENT_FOCUSED) {
+    lv_keyboard_set_textarea(kb, ta);
+    lv_obj_clear_flag(kb, LV_OBJ_FLAG_HIDDEN);
+    Serial.println("Keyboard opened");
+    lv_obj_add_flag(qrCode, LV_OBJ_FLAG_HIDDEN);
   }
 
-  /* Toggle button event handler */
-  static void toggle_event_handler(lv_event_t * e)
-  {
-    lv_event_code_t code = lv_event_get_code(e);
-    if (code == LV_EVENT_VALUE_CHANGED)
-    {
-      LV_LOG_USER("Toggled");
-      Serial.println("Toggled");
-    }
+  if (code == LV_EVENT_DEFOCUSED) {
+    lv_keyboard_set_textarea(kb, NULL);
+    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
   }
+}
 
-  void lv_button_demo(void)
-  {
-    lv_obj_t *label;
+void ui_background() {
+  mainScreen = lv_obj_create(NULL);
+  lv_obj_clear_flag(mainScreen, LV_OBJ_FLAG_SCROLLABLE);
 
-    // Button with counter
-    lv_obj_t *btn1 = lv_btn_create(lv_scr_act());
-    lv_obj_add_event_cb(btn1, counter_event_handler, LV_EVENT_ALL, NULL);
+  // titleImage = lv_img_create(mainScreen); 
+   // lv_img_set_src(titleImage, &anya_compressed);
+  // lv_obj_set_size(titleImage, 160, 90);
+  // lv_obj_set_pos(titleImage, 0, 0);
+  // lv_obj_set_align(titleImage, LV_ALIGN_TOP_MID);
+  // lv_obj_add_flag(titleImage, LV_OBJ_FLAG_ADV_HITTEST);
+  // lv_obj_clear_flag(titleImage, LV_OBJ_FLAG_SCROLLABLE);
 
-    lv_obj_set_pos(btn1, 100, 100);   /*Set its position*/
-    lv_obj_set_size(btn1, 120, 50);   /*Set its size*/
+  // anyaGif= lv_gif_create_from_data(mainScreen, anya_compressed.data);
+  // anyaGif = lv_img_create(mainScreen);
+  // lv_img_set_src(anyaGif, &anya_compressed);
+  anyaGif= lv_gif_create(mainScreen);
+  lv_gif_set_src(anyaGif, &anya_compressed_raw); //hrus ambil map data
+  lv_obj_set_size(anyaGif, 160, 90);
+  lv_obj_set_pos(anyaGif, 0, 0);
+  lv_obj_set_align(anyaGif, LV_ALIGN_TOP_MID);
+  lv_obj_add_flag(anyaGif, LV_OBJ_FLAG_ADV_HITTEST); 
+  lv_obj_clear_flag(anyaGif, LV_OBJ_FLAG_SCROLLABLE); 
 
+  lv_obj_t * titleLabel = lv_label_create(mainScreen);
+  lv_obj_set_pos(titleLabel, 0, 150);
+  lv_obj_set_align(titleLabel, LV_ALIGN_TOP_MID);
+  lv_label_set_text(titleLabel, "QR Code Maker");
+  lv_obj_clear_flag(titleLabel, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_text_font(titleLabel, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
+}
 
-    label = lv_label_create(btn1);
-    lv_label_set_text(label, "Button");
-    lv_obj_center(label);
+void ui_dynamic_obj(void) {
+  lv_obj_t * kb = lv_keyboard_create(mainScreen);
+  lv_obj_t * ta = lv_textarea_create(mainScreen);
+  lv_obj_align(ta, LV_ALIGN_CENTER, 0, -20);
+  lv_obj_add_event_cb(ta, ta_event_cb, LV_EVENT_ALL, kb);
+  lv_obj_set_size(ta, screenWidth - 80, 30);
+  lv_keyboard_set_textarea(kb, ta);
 
-    // Toggle button
-    lv_obj_t *btn2 = lv_btn_create(lv_scr_act());
-    lv_obj_add_event_cb(btn2, toggle_event_handler, LV_EVENT_ALL, NULL);
-    lv_obj_add_flag(btn2, LV_OBJ_FLAG_CHECKABLE);
-    lv_obj_set_pos(btn2, 250, 100);   /*Set its position*/
-    lv_obj_set_size(btn2, 120, 50);   /*Set its size*/
+  qrCode = lv_qrcode_create(mainScreen, 100, lv_color_hex3(0x000), lv_color_hex3(0xeef));
+  lv_obj_set_pos(qrCode, 0, 0);
+  lv_obj_set_align(qrCode, LV_ALIGN_TOP_MID);
+  lv_obj_add_flag(qrCode, LV_OBJ_FLAG_HIDDEN);
+}
 
-    label = lv_label_create(btn2);
-    lv_label_set_text(label, "Toggle Button");
-    lv_obj_center(label);
-  }
+void ui_init() {
+  ui_background();
+  ui_dynamic_obj();
+  lv_disp_load_scr(mainScreen);
+}
+
+void setup()
+{
+  Serial.begin(115200);
+  myDisplay.begin();
+  myDisplay.init();
+  //to set rotation
+  // if (myDisplay.width() < myDisplay.height()){
+  //   myDisplay.setRotation(myDisplay.getRotation() ^ 1);
+  // }
+  // myDisplay.setRotation(myDisplay.getRotation() ^ 1);
+  myDisplay.setBrightness(255);
+  lv_init();
+  lv_disp_draw_buf_init( &draw_buf, buf, NULL, screenWidth * 10 );
+
+  static lv_disp_drv_t disp_drv;
+  lv_disp_drv_init(&disp_drv);
+
+  disp_drv.hor_res = screenWidth;
+  disp_drv.ver_res = screenHeight;
+  disp_drv.flush_cb = displayFlush;
+  disp_drv.draw_buf = &draw_buf;
+  lv_disp_drv_register(&disp_drv);
+
+  static lv_indev_drv_t indev_drv;
+  lv_indev_drv_init(&indev_drv);
+  indev_drv.type = LV_INDEV_TYPE_POINTER;
+  indev_drv.read_cb = readTouchPad;
+  lv_indev_drv_register(&indev_drv);
+
+  ui_init();
+}
+
+void loop() {
+  lv_timer_handler();
+  delay( 5 );
+}
+

@@ -304,18 +304,18 @@ e.g. "stm32f769xx.h" or "stm32f429xx.h"*/
  *https://fonts.google.com/specimen/Montserrat*/
 #define LV_FONT_MONTSERRAT_8  0
 #define LV_FONT_MONTSERRAT_10 0
-#define LV_FONT_MONTSERRAT_12 0
+#define LV_FONT_MONTSERRAT_12 1
 #define LV_FONT_MONTSERRAT_14 1
 #define LV_FONT_MONTSERRAT_16 0
-#define LV_FONT_MONTSERRAT_18 0
+#define LV_FONT_MONTSERRAT_18 1
 #define LV_FONT_MONTSERRAT_20 0
-#define LV_FONT_MONTSERRAT_22 0
+#define LV_FONT_MONTSERRAT_22 1
 #define LV_FONT_MONTSERRAT_24 0
 #define LV_FONT_MONTSERRAT_26 0
 #define LV_FONT_MONTSERRAT_28 0
 #define LV_FONT_MONTSERRAT_30 0
 #define LV_FONT_MONTSERRAT_32 0
-#define LV_FONT_MONTSERRAT_34 0
+#define LV_FONT_MONTSERRAT_34 1
 #define LV_FONT_MONTSERRAT_36 0
 #define LV_FONT_MONTSERRAT_38 0
 #define LV_FONT_MONTSERRAT_40 0
@@ -556,7 +556,7 @@ e.g. "stm32f769xx.h" or "stm32f429xx.h"*/
 #define LV_USE_FS_FATFS '\0'        /*Uses f_open, f_read, etc*/
 
 /*PNG decoder library*/
-#define LV_USE_PNG 0
+#define LV_USE_PNG 1
 
 /*BMP decoder library*/
 #define LV_USE_BMP 0
@@ -566,10 +566,10 @@ e.g. "stm32f769xx.h" or "stm32f429xx.h"*/
 #define LV_USE_SJPG 0
 
 /*GIF decoder library*/
-#define LV_USE_GIF 0
+#define LV_USE_GIF 1
 
 /*QR code library*/
-#define LV_USE_QRCODE 0
+#define LV_USE_QRCODE 1
 
 /*FreeType library*/
 #define LV_USE_FREETYPE 0
